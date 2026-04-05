@@ -30,8 +30,12 @@ export const metadata = {
     description: "Enter the arena where only the fastest coders survive.",
   },
   metadataBase: new URL("https://codr.vercel.app"),
+};
+
+export const viewport = {
   themeColor: "#000000",
-  viewport: "width=device-width, initial-scale=1",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }) {

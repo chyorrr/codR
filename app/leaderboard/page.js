@@ -15,8 +15,8 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState('all');
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      setLoading(true);
+    const fetchLeaderboard = async (isInitial = true) => {
+      if (isInitial) setLoading(true);
       try {
         const res = await fetch(`/api/leaderboard?period=${period}&limit=50`);
         if (res.ok) {
@@ -26,10 +26,13 @@ export default function LeaderboardPage() {
       } catch (err) {
         console.error('[Leaderboard] Failed to fetch:', err);
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
-    fetchLeaderboard();
+    
+    fetchLeaderboard(true);
+    const interval = setInterval(() => fetchLeaderboard(false), 30000);
+    return () => clearInterval(interval);
   }, [period]);
 
   const getRankIcon = (rank) => {
@@ -82,11 +85,15 @@ export default function LeaderboardPage() {
             >
               <ArrowLeft className="w-5 h-5 text-yellow-400" />
             </motion.button>
-            <div className="font-mono">
+            <div className="font-mono flex items-center gap-4">
               <span className="text-yellow-400 text-xl font-bold flex items-center gap-2">
                 <Trophy className="w-6 h-6" />
                 LEADERBOARD
               </span>
+              <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs font-bold text-green-400">LIVE</span>
+              </div>
             </div>
           </div>
 

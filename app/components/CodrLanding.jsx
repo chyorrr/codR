@@ -19,6 +19,7 @@ export default function CodrLanding() {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [currentRoundTime, setCurrentRoundTime] = useState('60');
   const [glitchIntensity, setGlitchIntensity] = useState(0);
+  const [leaderboardPlayers, setLeaderboardPlayers] = useState([]);
 
   const heroRef = useRef(null);
   const featuresRef = useRef(null);
@@ -161,9 +162,9 @@ export default function CodrLanding() {
 
   const [allWeapons, setAllWeapons] = useState([]);
 
-  // Fetch weapon data from Supabase DB
+  // Fetch data from Supabase DB and APIs
   useEffect(() => {
-    const fetchWeapons = async () => {
+    const fetchData = async () => {
       try {
         const { data: weapons } = await supabase.from('weapons').select('*');
         if (weapons && weapons.length > 0) {
@@ -179,8 +180,18 @@ export default function CodrLanding() {
       } catch (err) {
         console.warn('[CodrLanding] Failed to fetch weapons from DB, using local data');
       }
+
+      try {
+        const res = await fetch('/api/leaderboard?limit=5');
+        if (res.ok) {
+          const data = await res.json();
+          setLeaderboardPlayers(data.players || []);
+        }
+      } catch (err) {
+        console.warn('[CodrLanding] Failed to fetch leaderboard from API');
+      }
     };
-    fetchWeapons();
+    fetchData();
   }, []);
 
   const changeArsenalCategory = (category) => {
@@ -360,15 +371,17 @@ export default function CodrLanding() {
 
             <nav className="hidden md:flex items-center gap-8">
               {[
-                { label: 'ARENA', icon: Target },
-                { label: 'WEAPONS', icon: Sword },
-                { label: 'LEADERBOARD', icon: Trophy },
-                { label: 'SETTINGS', icon: Settings }
+                { label: 'ARENA', icon: Target, route: '/arsenal' },
+                { label: 'CHALLENGE', icon: Crosshair, route: '/request' },
+                { label: 'WEAPONS', icon: Sword, route: '/arsenal' },
+                { label: 'LEADERBOARD', icon: Trophy, route: '/leaderboard' },
+                { label: 'PROFILE', icon: Settings, route: '/profile' }
               ].map((item, i) => {
                 const Icon = item.icon;
                 return (
                   <motion.button
                     key={item.label}
+                    onClick={() => router.push(item.route)}
                     className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors cursor-target"
                     whileHover={{ scale: 1.1, y: -2 }}
                     whileTap={{ scale: 0.95 }}
@@ -1438,47 +1451,43 @@ export default function CodrLanding() {
                 </div>
               </div>
               <div className="p-8 space-y-4">
-                {[
-                  { rank: 1, name: 'DEATH_CODER_X', kills: 1337, weapon: 'RUST_SNIPER', status: 'APEX_PREDATOR' },
-                  { rank: 2, name: 'NULL_POINTER', kills: 892, weapon: 'PYTHON_ASSAULT', status: 'LEGENDARY' },
-                  { rank: 3, name: 'STACK_OVERFLOW', kills: 743, weapon: 'JS_SHOTGUN', status: 'MASTER' },
-                  { rank: 4, name: 'CODE_REAPER', kills: 621, weapon: 'GO_SMG', status: 'DIAMOND' },
-                  { rank: 5, name: 'SYNTAX_SLAYER', kills: 589, weapon: 'C++_RIFLE', status: 'PLATINUM' }
-                ].map((player, i) => (
+                {(leaderboardPlayers.length > 0 ? leaderboardPlayers : [{ username: 'LOADING...', score: 0, rank_title: '...', equipped_weapon: { name: '...' } }]).slice(0, 5).map((player, i) => {
+                  const rank = i + 1;
+                  return (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -30 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className={`flex items-center justify-between p-4 rounded-lg border transition-all hover:scale-[1.02] cursor-target ${player.rank === 1
+                    className={`flex items-center justify-between p-4 rounded-lg border transition-all hover:scale-[1.02] cursor-target ${rank === 1
                       ? 'bg-yellow-500/10 border-yellow-500/40 hover:border-yellow-500/60'
-                      : player.rank <= 3
+                      : rank <= 3
                         ? 'bg-orange-500/10 border-orange-500/30 hover:border-orange-500/50'
                         : 'bg-gray-800/50 border-gray-600/30 hover:border-gray-500/50'
                       }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${player.rank === 1 ? 'bg-yellow-500 text-black' :
-                        player.rank <= 3 ? 'bg-orange-500 text-white' : 'bg-gray-600 text-white'
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${rank === 1 ? 'bg-yellow-500 text-black' :
+                        rank <= 3 ? 'bg-orange-500 text-white' : 'bg-gray-600 text-white'
                         }`}>
-                        {player.rank}
+                        {rank}
                       </div>
                       <div>
-                        <div className="font-bold text-white font-mono">{player.name}</div>
-                        <div className="text-xs text-gray-400">{player.weapon}</div>
+                        <div className="font-bold text-white font-mono">{player.username}</div>
+                        <div className="text-xs text-gray-400">{player.equipped_weapon?.name || 'Default Weapon'}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold ${player.rank === 1 ? 'text-yellow-400' :
-                        player.rank <= 3 ? 'text-orange-400' : 'text-gray-300'
+                      <div className={`font-bold ${rank === 1 ? 'text-yellow-400' :
+                        rank <= 3 ? 'text-orange-400' : 'text-gray-300'
                         }`}>
-                        {player.kills}
+                        {player.score}
                       </div>
-                      <div className="text-xs text-gray-500">ELIMINATIONS</div>
+                      <div className="text-xs text-gray-500">SCORE / ELO</div>
                     </div>
                   </motion.div>
-                ))}
+                )})}
               </div>
             </div>
           </motion.div>
@@ -1782,12 +1791,12 @@ export default function CodrLanding() {
                   }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
-                  247
+                  GLOBAL
                 </motion.span>
               </motion.span>
               <motion.span variants={itemVariants}>•</motion.span>
               <motion.span variants={itemVariants}>
-                TOTAL ELIMINATIONS: <motion.span
+                SYSTEM STATUS: <motion.span
                   className="text-yellow-400"
                   animate={{
                     scale: [1, 1.05, 1],
@@ -1799,7 +1808,7 @@ export default function CodrLanding() {
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  15,347
+                  SECURE
                 </motion.span>
               </motion.span>
             </motion.div>

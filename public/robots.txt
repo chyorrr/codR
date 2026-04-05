@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /settings
+Disallow: /combat
+
+Sitemap: https://codr.vercel.app/sitemap.xml

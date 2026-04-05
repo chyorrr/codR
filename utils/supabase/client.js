@@ -1,11 +1,13 @@
-// Phase 2: Standard Supabase browser client
-// Uses environment variables from .env.local
-import { createBrowserClient } from '@supabase/ssr'
+// Supabase browser client — uses @supabase/supabase-js directly
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+let client = null;
 
 export function createClient() {
-  // Browser-side client using NEXT_PUBLIC env variables
-  return createBrowserClient(
+  if (client) return client;
+  client = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  );
+  return client;
 }

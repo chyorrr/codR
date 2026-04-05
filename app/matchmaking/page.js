@@ -272,7 +272,14 @@ const MatchmakingPage = () => {
   };
 
   const handleStartBattle = () => {
-    // Navigate to battle page (to be created)
+    // Save match configuration for combat page
+    const config = {
+      gameMode,
+      teamSize,
+      matchTime,
+      opponent: opponent || null,
+    };
+    sessionStorage.setItem('matchConfig', JSON.stringify(config));
     router.push('/combat');
   };
 

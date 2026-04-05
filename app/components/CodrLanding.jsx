@@ -3,11 +3,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useInView, useAnimation, useMotionValue, useSpring } from 'framer-motion';
 import { Github, Linkedin, Zap, Users, Trophy, Terminal, Code, Clock, Shield, Binary, Cpu, Database, GitBranch, Crosshair, Skull, Sword, Target, Flame, Gamepad2, Users2, Award, Lock, ChevronDown, Play, Pause, Volume2, VolumeX, Settings, Star, Sparkles, Bolt, Layout, Paintbrush, FileCode, Atom, Server, AlarmClock, Network, Container, Bitcoin, Brain } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TargetCursor, CodeBackground } from './ClientComponents';
-import { loadAllArsenals } from '../utils/arsenalLoader';
+import { useAuth, SignInButton } from "@clerk/nextjs";
+import { CodeBackground } from './ClientComponents';
+import { createClient } from '../../utils/supabase/client';
 
 export default function CodrLanding() {
+  const supabase = createClient();
   const router = useRouter();
+  const { isSignedIn, isLoaded } = useAuth();
   const [terminalLines, setTerminalLines] = useState([]);
   const [currentLine, setCurrentLine] = useState(0);
   const [killCount, setKillCount] = useState(0);
@@ -16,11 +19,11 @@ export default function CodrLanding() {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [currentRoundTime, setCurrentRoundTime] = useState('60');
   const [glitchIntensity, setGlitchIntensity] = useState(0);
-  
+
   const heroRef = useRef(null);
   const featuresRef = useRef(null);
   const weaponsRef = useRef(null);
-  
+
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
@@ -29,7 +32,7 @@ export default function CodrLanding() {
   // Safe viewport fallbacks for SSR - use them inside useEffect only
   const [vw, setVw] = useState(1920);
   const [vh, setVh] = useState(1080);
-  
+
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 100, damping: 30 });
@@ -54,14 +57,14 @@ export default function CodrLanding() {
   ];
 
   const roundTimeOptions = ['5', '30', '60', '120', '300'];
-  
+
   // Enhanced mouse tracking
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
-      
+
       // Create subtle glitch effect on rapid movement
       const speed = Math.sqrt(e.movementX ** 2 + e.movementY ** 2);
       if (speed > 50) {
@@ -69,7 +72,7 @@ export default function CodrLanding() {
         setTimeout(() => setGlitchIntensity(0), 100);
       }
     };
-    
+
     if (typeof window !== 'undefined') {
       window.addEventListener('mousemove', handleMouseMove);
       return () => window.removeEventListener('mousemove', handleMouseMove);
@@ -88,7 +91,7 @@ export default function CodrLanding() {
       const killTimer = setInterval(() => {
         setKillCount(prev => Math.min(prev + 1, 1337));
       }, 30);
-      
+
       // Cycle through round times
       const timeTimer = setInterval(() => {
         setCurrentRoundTime(prev => {
@@ -96,54 +99,54 @@ export default function CodrLanding() {
           return roundTimeOptions[(currentIndex + 1) % roundTimeOptions.length];
         });
       }, 2000);
-      
+
       setTimeout(() => {
         clearInterval(killTimer);
         clearInterval(timeTimer);
         setIsArenaActive(true);
       }, 4000);
-      
+
       return () => {
         clearInterval(killTimer);
         clearInterval(timeTimer);
       };
     }
-  }, [currentLine, roundTimeOptions]);
+  }, [currentLine]); // removed roundTimeOptions from deps - it's a constant
 
   const gameFeatures = [
-    { 
-      icon: Crosshair, 
-      title: 'PRECISION_TARGETING', 
-      desc: 'Aim for perfect syntax. Miss and face elimination. Neural targeting systems guide your code.', 
-      code: 'accuracy: 99.7%', 
-      color: 'text-red-400', 
+    {
+      icon: Crosshair,
+      title: 'PRECISION_TARGETING',
+      desc: 'Aim for perfect syntax. Miss and face elimination. Neural targeting systems guide your code.',
+      code: 'accuracy: 99.7%',
+      color: 'text-red-400',
       glowColor: 'red',
       particles: 12
     },
-    { 
-      icon: Skull, 
-      title: 'ELIMINATION_MODE', 
-      desc: 'Last coder standing wins. No mercy for bugs. Quantum elimination protocols activated.', 
-      code: 'survivors: 1/16', 
-      color: 'text-red-400', 
+    {
+      icon: Skull,
+      title: 'ELIMINATION_MODE',
+      desc: 'Last coder standing wins. No mercy for bugs. Quantum elimination protocols activated.',
+      code: 'survivors: 1/16',
+      color: 'text-red-400',
       glowColor: 'red',
       particles: 15
     },
-    { 
-      icon: Flame, 
-      title: 'RAPID_FIRE', 
-      desc: 'Code fast or die. Variable time rounds from 5 seconds to 5 minutes of pure chaos.', 
-      code: 'exec_time: 5s-5m', 
-      color: 'text-red-400', 
+    {
+      icon: Flame,
+      title: 'RAPID_FIRE',
+      desc: 'Code fast or die. Variable time rounds from 5 seconds to 5 minutes of pure chaos.',
+      code: 'exec_time: 5s-5m',
+      color: 'text-red-400',
       glowColor: 'red',
       particles: 20
     },
-    { 
-      icon: Trophy, 
-      title: 'VICTORY_ROYALE', 
-      desc: 'Climb the leaderboard. Become the apex coder. Legendary status awaits the worthy.', 
-      code: 'rank: #1', 
-      color: 'text-green-400', 
+    {
+      icon: Trophy,
+      title: 'VICTORY_ROYALE',
+      desc: 'Climb the leaderboard. Become the apex coder. Legendary status awaits the worthy.',
+      code: 'rank: #1',
+      color: 'text-green-400',
       glowColor: 'green',
       particles: 8
     }
@@ -155,54 +158,74 @@ export default function CodrLanding() {
   const [terminalOutput, setTerminalOutput] = useState([]);
   const [selectedWeapon, setSelectedWeapon] = useState(null);
   const [terminalActive, setTerminalActive] = useState(false);
-  
-  // Import arsenal data
+
+  const [allWeapons, setAllWeapons] = useState([]);
+
+  // Fetch weapon data from Supabase DB
   useEffect(() => {
-    const allArsenals = loadAllArsenals();
-    const initialCategory = 'basic';
-    setWeaponClasses(allArsenals[initialCategory]);
-    setSelectedCategory(initialCategory);
-    // Preselect first weapon
-    if (allArsenals[initialCategory] && allArsenals[initialCategory].length > 0) {
-      setSelectedWeapon(allArsenals[initialCategory][0]);
-      simulateTerminalBoot(allArsenals[initialCategory][0]);
-    }
+    const fetchWeapons = async () => {
+      try {
+        const { data: weapons } = await supabase.from('weapons').select('*');
+        if (weapons && weapons.length > 0) {
+          setAllWeapons(weapons);
+          const primaryWeapons = weapons.filter(w => w.category === 'Primary');
+          const secondaryWeapons = weapons.filter(w => w.category === 'Secondary');
+          setWeaponClasses(primaryWeapons.length > 0 ? primaryWeapons : weapons);
+          setSelectedCategory('basic');
+          if (primaryWeapons.length > 0) {
+            setSelectedWeapon(primaryWeapons[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('[CodrLanding] Failed to fetch weapons from DB, using local data');
+      }
+    };
+    fetchWeapons();
   }, []);
-  
+
   const changeArsenalCategory = (category) => {
-    const allArsenals = loadAllArsenals();
-    setWeaponClasses(allArsenals[category] || []);
+    const targetCategory = category === 'basic' ? 'Primary' : 'Secondary';
+    const filtered = allWeapons.filter(w => w.category === targetCategory);
+    setWeaponClasses(filtered);
     setSelectedCategory(category);
     // Select first weapon in category
-    if (allArsenals[category] && allArsenals[category].length > 0) {
-      setSelectedWeapon(allArsenals[category][0]);
-      simulateTerminalBoot(allArsenals[category][0]);
+    if (filtered.length > 0) {
+      setSelectedWeapon(filtered[0]);
+      simulateTerminalBoot(filtered[0]);
     }
   };
-  
+
   const selectWeapon = (weapon) => {
     setSelectedWeapon(weapon);
     simulateTerminalBoot(weapon);
   };
-  
+
   const simulateTerminalBoot = (weapon) => {
-    if (!weapon || !weapon.terminal) return;
-    
+    if (!weapon) return;
+
+    // DB weapons don't have terminal.bootSequence, generate one from metadata
+    const bootSequence = weapon.terminal?.bootSequence || [
+      `$ loading weapon "${weapon.name}"...`,
+      `$ challenge_type: ${weapon.challenge_type || 'General'}`,
+      `$ difficulty: ${weapon.difficulty || 'standard'}`,
+      `$ damage_rating: ${weapon.damage || '??'}`,
+      `$ weapon_system ONLINE`
+    ];
+
     setTerminalOutput([]);
     setTerminalActive(true);
-    
-    // Simulate typing effect for terminal commands
+
     let i = 0;
     const interval = setInterval(() => {
-      if (i < weapon.terminal.bootSequence.length) {
-        setTerminalOutput(prev => [...prev, weapon.terminal.bootSequence[i]]);
+      if (i < bootSequence.length) {
+        setTerminalOutput(prev => [...prev, bootSequence[i]]);
         i++;
       } else {
         clearInterval(interval);
         setTimeout(() => {
-          setTerminalOutput(prev => [...prev, 
-            `$ weapon_initialized "${weapon.name}" --ready`, 
-            `$ damage_output ${weapon.damage} --accuracy=${weapon.accuracy}`,
+          setTerminalOutput(prev => [...prev,
+          `$ weapon_initialized "${weapon.name}" --ready`,
+          `$ damage_output ${weapon.damage} --accuracy=${weapon.accuracy}`,
             `$ echo "WEAPON SYSTEM ONLINE"`
           ]);
         }, 500);
@@ -253,10 +276,10 @@ export default function CodrLanding() {
   };
 
   const itemVariants = {
-    hidden: { 
-      opacity: 0, 
+    hidden: {
+      opacity: 0,
       y: 20,
-      scale: 0.9 
+      scale: 0.9
     },
     visible: {
       opacity: 1,
@@ -271,10 +294,10 @@ export default function CodrLanding() {
   };
 
   const glitchVariants = {
-    normal: { 
-      x: 0, 
-      y: 0, 
-      filter: "hue-rotate(0deg)" 
+    normal: {
+      x: 0,
+      y: 0,
+      filter: "hue-rotate(0deg)"
     },
     glitch: {
       x: [-2, 2, -1, 1, 0],
@@ -292,12 +315,10 @@ export default function CodrLanding() {
   // background canvas is provided by CodeBackground component (no client-side generation here)
 
   return (
-    <div className="min-h-screen bg-black text-white font-mono overflow-x-hidden relative cursor-none">
-      {/* Custom Target Cursor (GSAP-based) - hide system cursor so only crosshair shows */}
-      <TargetCursor spinDuration={2} hideDefaultCursor={true} />
+    <div className="min-h-screen bg-black text-white font-mono overflow-x-hidden relative">
 
       {/* Enhanced Header Navigation */}
-      <motion.header 
+      <motion.header
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
@@ -305,29 +326,29 @@ export default function CodrLanding() {
       >
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <motion.div 
+            <motion.div
               className="flex items-center gap-4"
               whileHover={{ scale: 1.05 }}
             >
-              <motion.div 
+              <motion.div
                 className="relative"
-                animate={{ 
+                animate={{
                   rotate: [0, 360],
                   scale: [1, 1.1, 1]
                 }}
-                transition={{ 
+                transition={{
                   rotate: { duration: 20, repeat: Infinity, ease: "linear" },
                   scale: { duration: 2, repeat: Infinity }
                 }}
               >
                 <Skull className="w-8 h-8 text-red-400" />
-                <motion.div 
+                <motion.div
                   className="absolute inset-0 bg-red-500/30 rounded-full blur-lg"
                   animate={{ opacity: [0.3, 0.7, 0.3] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
-                <motion.div 
-                  animate={{ 
+                <motion.div
+                  animate={{
                     scale: [1, 1.3, 1],
                     opacity: [0.05, 0.15, 0.05]
                   }}
@@ -371,10 +392,10 @@ export default function CodrLanding() {
               >
                 {isAudioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </motion.button>
-              
+
               <motion.div
                 className="flex items-center gap-2 px-3 py-2 bg-red-600/20 border border-red-500/30 rounded-lg"
-                animate={{ 
+                animate={{
                   boxShadow: [
                     "0 0 0 rgba(220, 38, 38, 0)",
                     "0 0 20px rgba(220, 38, 38, 0.3)",
@@ -418,8 +439,8 @@ export default function CodrLanding() {
       ))}
 
       {/* Enhanced danger zones with more complex animations */}
-      <motion.div 
-        animate={{ 
+      <motion.div
+        animate={{
           scale: [1, 1.4, 1.2, 1.6, 1],
           opacity: [0.05, 0.15, 0.08, 0.12, 0.05],
           rotate: [0, 180, 360]
@@ -427,8 +448,8 @@ export default function CodrLanding() {
         transition={{ duration: 8, repeat: Infinity }}
         className="absolute top-1/4 left-1/6 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none"
       />
-      <motion.div 
-        animate={{ 
+      <motion.div
+        animate={{
           scale: [1, 1.3, 1.1, 1.5, 1],
           opacity: [0.05, 0.12, 0.06, 0.10, 0.05],
           rotate: [360, 180, 0]
@@ -436,8 +457,8 @@ export default function CodrLanding() {
         transition={{ duration: 10, repeat: Infinity, delay: 2 }}
         className="absolute bottom-1/3 right-1/5 w-96 h-96 bg-orange-600/15 rounded-full blur-3xl pointer-events-none"
       />
-      <motion.div 
-        animate={{ 
+      <motion.div
+        animate={{
           scale: [1, 1.2, 1.3, 1.1, 1],
           opacity: [0.03, 0.08, 0.05, 0.10, 0.03],
           x: [-20, 20, -10, 15, 0],
@@ -448,7 +469,7 @@ export default function CodrLanding() {
       />
 
       {/* Enhanced Hero Section */}
-      <motion.section 
+      <motion.section
         ref={heroRef}
         style={{ opacity, scale }}
         className="relative min-h-screen flex items-center justify-center py-20 pt-32"
@@ -465,7 +486,7 @@ export default function CodrLanding() {
             >
               <div className="flex items-center gap-4">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     rotate: [0, 90, 180, 270, 360],
                     scale: [1, 1.2, 1, 1.2, 1]
                   }}
@@ -473,9 +494,9 @@ export default function CodrLanding() {
                 >
                   <Crosshair className="w-8 h-8 text-red-400" />
                 </motion.div>
-                <motion.span 
+                <motion.span
                   className="text-red-400 text-sm tracking-[0.3em] font-bold"
-                  animate={{ 
+                  animate={{
                     textShadow: [
                       "0 0 0 rgba(220, 38, 38, 0)",
                       "0 0 10px rgba(220, 38, 38, 0.8)",
@@ -486,7 +507,7 @@ export default function CodrLanding() {
                 >
                   DEATHMATCH_ARENA
                 </motion.span>
-                <motion.div 
+                <motion.div
                   className="flex-1 h-px bg-gradient-to-r from-red-500/50 to-transparent"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
@@ -494,14 +515,14 @@ export default function CodrLanding() {
                 />
               </div>
               <div className="flex items-center gap-6 text-sm">
-                <motion.div 
+                <motion.div
                   className="flex items-center gap-2"
                   animate={{ y: [0, -2, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <motion.div 
+                  <motion.div
                     className="w-2 h-2 bg-red-500 rounded-full"
-                    animate={{ 
+                    animate={{
                       scale: [1, 1.5, 1],
                       opacity: [1, 0.5, 1]
                     }}
@@ -509,14 +530,14 @@ export default function CodrLanding() {
                   />
                   <span className="text-red-400">LIVE</span>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="text-orange-400"
                   variants={glitchVariants}
                   animate={glitchIntensity > 0.5 ? "glitch" : "normal"}
                 >
-                  KILLS: <motion.span 
+                  KILLS: <motion.span
                     className="font-bold text-xl"
-                    animate={{ 
+                    animate={{
                       color: ["#fb923c", "#dc2626", "#fb923c"]
                     }}
                     transition={{ duration: 1, repeat: Infinity }}
@@ -534,22 +555,22 @@ export default function CodrLanding() {
                   variants={itemVariants}
                 >
                   <div className="mb-8">
-                    <motion.h1 
+                    <motion.h1
                       className="text-6xl lg:text-7xl xl:text-8xl font-bold mb-4 leading-none relative"
-                      animate={{ 
-                        textShadow: isArenaActive 
+                      animate={{
+                        textShadow: isArenaActive
                           ? [
-                              '0 0 20px rgba(220, 38, 38, 0.8)',
-                              '0 0 40px rgba(220, 38, 38, 0.6)',
-                              '0 0 20px rgba(220, 38, 38, 0.8)'
-                            ]
+                            '0 0 20px rgba(220, 38, 38, 0.8)',
+                            '0 0 40px rgba(220, 38, 38, 0.6)',
+                            '0 0 20px rgba(220, 38, 38, 0.8)'
+                          ]
                           : '0 0 10px rgba(220, 38, 38, 0.4)'
                       }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     >
-                      <motion.span 
+                      <motion.span
                         className="text-white font-sans tracking-tight relative inline-block"
-                        whileHover={{ 
+                        whileHover={{
                           scale: 1.05,
                           rotateY: 5,
                           textShadow: "0 0 30px rgba(255, 255, 255, 0.8)"
@@ -562,9 +583,9 @@ export default function CodrLanding() {
                           transition={{ duration: 0.3 }}
                         />
                       </motion.span>
-                      <motion.span 
+                      <motion.span
                         className="text-red-500 font-sans tracking-tight relative inline-block"
-                        whileHover={{ 
+                        whileHover={{
                           scale: 1.1,
                           rotateY: -5,
                           textShadow: "0 0 30px rgba(220, 38, 38, 1)"
@@ -581,7 +602,7 @@ export default function CodrLanding() {
                         R
                         <motion.div
                           className="absolute -inset-2 bg-gradient-to-r from-red-600/20 to-orange-600/20 rounded-lg blur-xl opacity-60"
-                          animate={{ 
+                          animate={{
                             scale: [1, 1.2, 1],
                             opacity: [0.6, 0.8, 0.6]
                           }}
@@ -589,10 +610,10 @@ export default function CodrLanding() {
                         />
                       </motion.span>
                     </motion.h1>
-                    
-                    <motion.div 
+
+                    <motion.div
                       className="text-lg text-red-400 font-bold tracking-[0.2em] mb-2 relative"
-                      animate={{ 
+                      animate={{
                         opacity: [0.7, 1, 0.7],
                         y: [0, -2, 0]
                       }}
@@ -601,19 +622,19 @@ export default function CodrLanding() {
                       <span className="relative z-10">DEATHMATCH EDITION</span>
                       <motion.div
                         className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 blur-sm"
-                        animate={{ 
+                        animate={{
                           x: [-100, 100],
                           opacity: [0, 1, 0]
                         }}
-                        transition={{ 
-                          duration: 3, 
+                        transition={{
+                          duration: 3,
                           repeat: Infinity,
                           repeatType: "loop"
                         }}
                       />
                     </motion.div>
                   </div>
-                  
+
                   {/* Enhanced Terminal */}
                   <div className="relative mb-10">
                     <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg blur opacity-30" />
@@ -635,7 +656,7 @@ export default function CodrLanding() {
                         <div className="space-y-3">
                           <AnimatePresence>
                             {terminalLines.map((line, i) => (
-                              <motion.p 
+                              <motion.p
                                 key={i}
                                 initial={{ opacity: 0, x: -15 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -646,7 +667,7 @@ export default function CodrLanding() {
                             ))}
                           </AnimatePresence>
                           {currentLine < codeLines.length && (
-                            <motion.span 
+                            <motion.span
                               animate={{ opacity: [1, 0] }}
                               transition={{ duration: 0.6, repeat: Infinity }}
                               className="inline-block w-3 h-5 bg-red-400 ml-1"
@@ -659,42 +680,47 @@ export default function CodrLanding() {
 
                   <div className="mb-10">
                     <p className="text-gray-300 text-xl mb-3 font-sans leading-relaxed">
-                      <span className="text-red-400 font-bold">ELIMINATE</span>. 
-                      <span className="text-orange-400 font-bold mx-2">CODE</span>. 
+                      <span className="text-red-400 font-bold">ELIMINATE</span>.
+                      <span className="text-orange-400 font-bold mx-2">CODE</span>.
                       <span className="text-yellow-400 font-bold">SURVIVE</span>.
                     </p>
                     <p className="text-gray-500 text-base">
                       Enter the arena where only the fastest coders survive. <br />
-                      <span className="text-red-400">60-second deathmatch rounds</span> • 
-                      <span className="text-orange-400 ml-2">Elimination gameplay</span> • 
+                      <span className="text-red-400">60-second deathmatch rounds</span> •
+                      <span className="text-orange-400 ml-2">Elimination gameplay</span> •
                       <span className="text-yellow-400 ml-2">Last coder standing wins</span>
                     </p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-6">
-                    <motion.button
-                      whileHover={{ 
-                        scale: 1.05, 
-                        boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)',
-                      }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push('/matchmaking')}
-                      className="relative group flex-1 cursor-target"
-                    >
-                      <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg blur opacity-60 group-hover:opacity-90 transition" />
-                      <div className="relative flex items-center justify-center gap-3 bg-red-600 text-white px-10 py-5 rounded-lg font-sans font-bold text-lg">
-                        <Crosshair className="w-6 h-6" />
-                        <span>ENTER_ARENA</span>
-                      </div>
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center justify-center gap-3 bg-gray-900 border-2 border-red-500/40 text-red-400 px-10 py-5 rounded-lg font-sans font-bold text-lg hover:bg-red-500/10 transition-colors cursor-target"
-                    >
-                      <Github className="w-6 h-6" />
-                      <span>GITHUB_AUTH</span>
-                    </motion.button>
+                    {isLoaded && isSignedIn ? (
+                      <motion.button
+                        whileHover={{
+                          scale: 1.05,
+                          boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)',
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => window.location.href = '/arsenal'}
+                        className="relative group flex-1 cursor-target"
+                      >
+                        <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg blur opacity-60 group-hover:opacity-90 transition" />
+                        <div className="relative flex items-center justify-center gap-3 bg-red-600 text-white px-10 py-5 rounded-lg font-sans font-bold text-lg">
+                          <Crosshair className="w-6 h-6" />
+                          <span>ENTER_ARENA</span>
+                        </div>
+                      </motion.button>
+                    ) : isLoaded ? (
+                      <SignInButton mode="modal">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex items-center justify-center gap-3 bg-gray-900 border-2 border-red-500/40 text-red-400 px-10 py-5 rounded-lg font-sans font-bold text-lg hover:bg-red-500/10 transition-colors cursor-target w-full sm:w-auto"
+                        >
+                          <Lock className="w-6 h-6" />
+                          <span>SIGN IN</span>
+                        </motion.button>
+                      </SignInButton>
+                    ) : null}
                   </div>
                 </motion.div>
               </div>
@@ -759,20 +785,20 @@ export default function CodrLanding() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 1.2 }}
                     className="absolute top-4 right-4 bg-black/85 border border-red-500/30 rounded-2xl p-3 backdrop-blur-md shadow-xl w-max text-center cursor-target"
-                    whileHover={{ 
+                    whileHover={{
                       scale: 1.05,
                       borderColor: "rgba(220, 38, 38, 0.6)",
                       boxShadow: "0 0 30px rgba(220, 38, 38, 0.3)"
                     }}
                   >
-                    <motion.div 
+                    <motion.div
                       className="flex items-center gap-3"
                       animate={{ y: [0, -1, 0] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     >
-                      <motion.div 
+                      <motion.div
                         className="p-2 bg-red-600/10 rounded-md"
-                        animate={{ 
+                        animate={{
                           backgroundColor: [
                             "rgba(220, 38, 38, 0.1)",
                             "rgba(220, 38, 38, 0.2)",
@@ -789,16 +815,16 @@ export default function CodrLanding() {
                         </motion.div>
                       </motion.div>
                       <div className="text-left">
-                        <motion.div 
+                        <motion.div
                           className="text-xl font-bold text-red-400 leading-none"
                           key={currentRoundTime}
                           initial={{ scale: 0.8, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ type: "spring", damping: 15 }}
                         >
-                          <motion.span 
+                          <motion.span
                             className="text-2xl"
-                            animate={{ 
+                            animate={{
                               textShadow: [
                                 "0 0 0 rgba(220, 38, 38, 0)",
                                 "0 0 10px rgba(220, 38, 38, 0.8)",
@@ -813,7 +839,7 @@ export default function CodrLanding() {
                             {currentRoundTime === '300' ? 'MIN' : 'SEC'}
                           </span>
                         </motion.div>
-                        <motion.div 
+                        <motion.div
                           className="text-[10px] text-gray-400 font-bold uppercase"
                           animate={{ opacity: [0.7, 1, 0.7] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
@@ -837,7 +863,7 @@ export default function CodrLanding() {
         >
           <div className="flex flex-col items-center gap-3">
             <span className="text-red-400/70 text-xs tracking-widest font-bold">ENTER_BATTLEGROUND</span>
-            <motion.div 
+            <motion.div
               className="w-px h-20 bg-gradient-to-b from-red-500/60 to-transparent"
               animate={{ scaleY: [1, 1.5, 1] }}
               transition={{ repeat: Infinity, duration: 2.5 }}
@@ -850,7 +876,7 @@ export default function CodrLanding() {
       {/* Game Features Section */}
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-black via-red-950/10 to-black" />
-        
+
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -912,20 +938,19 @@ export default function CodrLanding() {
                       }}
                     />
                   ))}
-                  
-                  <motion.div 
-                    className={`absolute -inset-1 rounded-xl blur opacity-0 group-hover:opacity-60 transition-all duration-500 ${
-                      isSpecialGlow 
-                        ? 'bg-gradient-to-r from-red-600 to-red-600' 
-                        : 'bg-gradient-to-r from-red-600 to-orange-600'
-                    }`}
+
+                  <motion.div
+                    className={`absolute -inset-1 rounded-xl blur opacity-0 group-hover:opacity-60 transition-all duration-500 ${isSpecialGlow
+                      ? 'bg-gradient-to-r from-red-600 to-red-600'
+                      : 'bg-gradient-to-r from-red-600 to-orange-600'
+                      }`}
                     animate={{
                       scale: [1, 1.05, 1],
                       opacity: [0, 0.3, 0]
                     }}
                     transition={{ duration: 3, repeat: Infinity, delay: i * 0.5 }}
                   />
-                  
+
                   <div className="relative bg-gradient-to-br from-gray-900 to-black border-2 border-red-500/30 p-8 rounded-xl group-hover:border-red-500/50 transition-all cursor-target overflow-hidden">
                     {/* Animated background pattern */}
                     <motion.div
@@ -939,33 +964,32 @@ export default function CodrLanding() {
                         backgroundSize: "60px 60px"
                       }}
                     />
-                    
+
                     <div className="flex items-start justify-between mb-6 relative z-10">
                       <div className="flex items-center gap-4">
-                        <motion.div 
-                          className={`p-3 bg-black/50 rounded-lg border transition-colors relative ${
-                            isSpecialGlow 
-                              ? 'border-red-500/30 group-hover:border-red-500/60' 
-                              : 'border-red-500/30 group-hover:border-red-500/60'
-                          }`}
-                          whileHover={{ 
+                        <motion.div
+                          className={`p-3 bg-black/50 rounded-lg border transition-colors relative ${isSpecialGlow
+                            ? 'border-red-500/30 group-hover:border-red-500/60'
+                            : 'border-red-500/30 group-hover:border-red-500/60'
+                            }`}
+                          whileHover={{
                             boxShadow: "0 0 20px rgba(220, 38, 38, 0.5)",
-                            scale: 1.1 
+                            scale: 1.1
                           }}
                         >
                           <motion.div
-                            animate={{ 
+                            animate={{
                               rotate: feature.title === 'RAPID_FIRE' ? [0, 360] : 0,
                               scale: [1, 1.1, 1]
                             }}
-                            transition={{ 
+                            transition={{
                               rotate: { duration: 2, repeat: Infinity, ease: "linear" },
                               scale: { duration: 2, repeat: Infinity }
                             }}
                           >
                             <Icon className={`w-8 h-8 ${feature.color} group-hover:scale-110 transition-transform relative z-10`} />
                           </motion.div>
-                          
+
                           {/* Icon glow effect */}
                           <motion.div
                             className="absolute inset-0 rounded-lg blur-md opacity-0 group-hover:opacity-50"
@@ -979,17 +1003,17 @@ export default function CodrLanding() {
                             transition={{ duration: 2, repeat: Infinity }}
                           />
                         </motion.div>
-                        
+
                         <div>
-                          <motion.h3 
+                          <motion.h3
                             className="text-xl font-bold font-sans text-white mb-1"
-                            whileHover={{ 
+                            whileHover={{
                               textShadow: "0 0 10px rgba(255, 255, 255, 0.8)"
                             }}
                           >
                             {feature.title}
                           </motion.h3>
-                          <motion.code 
+                          <motion.code
                             className="text-xs text-red-400/70 bg-black/50 px-2 py-1 rounded border border-red-500/20"
                             animate={{
                               borderColor: [
@@ -1005,15 +1029,15 @@ export default function CodrLanding() {
                         </div>
                       </div>
                     </div>
-                    
-                    <motion.p 
+
+                    <motion.p
                       className="text-gray-400 leading-relaxed mb-6 relative z-10"
                       whileHover={{ color: "rgb(209, 213, 219)" }}
                     >
                       {feature.desc}
                     </motion.p>
-                    
-                    <motion.div 
+
+                    <motion.div
                       className="h-px bg-gradient-to-r from-red-500/50 via-orange-500/30 to-transparent"
                       initial={{ scaleX: 0 }}
                       whileInView={{ scaleX: 1 }}
@@ -1058,18 +1082,17 @@ export default function CodrLanding() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => changeArsenalCategory(category)}
-                    className={`py-2 px-3 rounded font-mono text-sm transition-all ${
-                      selectedCategory === category 
-                        ? 'bg-orange-500/20 border-2 border-orange-500/60 text-orange-400' 
-                        : 'bg-black/40 border border-orange-500/20 text-gray-400 hover:text-orange-400 hover:border-orange-500/40'
-                    }`}
+                    className={`py-2 px-3 rounded font-mono text-sm transition-all ${selectedCategory === category
+                      ? 'bg-orange-500/20 border-2 border-orange-500/60 text-orange-400'
+                      : 'bg-black/40 border border-orange-500/20 text-gray-400 hover:text-orange-400 hover:border-orange-500/40'
+                      }`}
                   >
                     {category.toUpperCase()}
                   </motion.button>
                 ))}
               </div>
             </motion.div>
-            
+
             {/* Weapons Grid with Terminal */}
             <div className="grid md:grid-cols-5 gap-6">
               {/* Left side: Weapon selection */}
@@ -1084,19 +1107,16 @@ export default function CodrLanding() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => selectWeapon(weapon)}
-                    className={`relative group cursor-target ${
-                      selectedWeapon?.id === weapon.id ? 'ring-2 ring-orange-500 shadow-lg shadow-orange-500/20' : ''
-                    }`}
+                    className={`relative group cursor-target ${selectedWeapon?.id === weapon.id ? 'ring-2 ring-orange-500 shadow-lg shadow-orange-500/20' : ''
+                      }`}
                   >
-                    <div className={`absolute -inset-0.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg blur opacity-0 ${
-                      selectedWeapon?.id === weapon.id ? 'opacity-50' : 'group-hover:opacity-30'
-                    } transition-all duration-300`} />
+                    <div className={`absolute -inset-0.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg blur opacity-0 ${selectedWeapon?.id === weapon.id ? 'opacity-50' : 'group-hover:opacity-30'
+                      } transition-all duration-300`} />
                     <div className="relative bg-gradient-to-br from-gray-900 to-black border border-orange-500/30 p-4 rounded-lg group-hover:border-orange-500/60 transition-all">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${
-                            selectedWeapon?.id === weapon.id ? 'bg-orange-400 animate-pulse' : 'bg-gray-500'
-                          }`} />
+                          <div className={`w-2 h-2 rounded-full ${selectedWeapon?.id === weapon.id ? 'bg-orange-400 animate-pulse' : 'bg-gray-500'
+                            }`} />
                           <h4 className="text-sm font-bold text-orange-400 font-mono">{weapon.name}</h4>
                         </div>
                         <div className="text-right">
@@ -1107,10 +1127,9 @@ export default function CodrLanding() {
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div className="bg-black/40 rounded p-1 px-2">
                           <span className="text-gray-500">RANGE:</span>
-                          <span className={`ml-1 font-bold ${
-                            weapon.range === 'LONG' || weapon.range === 'VERY_LONG' || weapon.range === 'INFINITE' || weapon.range === 'GLOBAL' ? 'text-green-400' : 
+                          <span className={`ml-1 font-bold ${weapon.range === 'LONG' || weapon.range === 'VERY_LONG' || weapon.range === 'INFINITE' || weapon.range === 'GLOBAL' ? 'text-green-400' :
                             weapon.range === 'MID' || weapon.range === 'CROSS_TEMPORAL' ? 'text-yellow-400' : 'text-red-400'
-                          }`}>
+                            }`}>
                             {weapon.range}
                           </span>
                         </div>
@@ -1123,7 +1142,7 @@ export default function CodrLanding() {
                   </motion.div>
                 ))}
               </div>
-              
+
               {/* Right side: Terminal and weapon details */}
               <div className="md:col-span-3">
                 <motion.div
@@ -1151,7 +1170,7 @@ export default function CodrLanding() {
                         </span>
                       )}
                     </div>
-                    
+
                     {/* Terminal content */}
                     <div className="p-4 flex-grow font-mono bg-black overflow-y-auto">
                       {selectedWeapon ? (
@@ -1163,14 +1182,14 @@ export default function CodrLanding() {
                             </div>
                             <div className="text-gray-400 text-sm mt-1">{selectedWeapon.description}</div>
                           </div>
-                          
+
                           {/* Terminal output */}
                           <div className="bg-black/60 border border-gray-800 rounded p-3 font-mono text-sm">
                             <div className="flex items-center gap-2 mb-2">
                               <div className="w-2 h-2 bg-green-500 rounded-full" />
                               <span className="text-green-500 text-xs">WEAPON_LOADER</span>
                             </div>
-                            
+
                             <div className="space-y-1 text-xs">
                               <AnimatePresence>
                                 {(terminalOutput || []).map((line, i) => (
@@ -1192,7 +1211,7 @@ export default function CodrLanding() {
                                 ))}
                               </AnimatePresence>
                               {terminalActive && ((terminalOutput && terminalOutput.length) || 0) < 7 && (
-                                <motion.span 
+                                <motion.span
                                   animate={{ opacity: [1, 0] }}
                                   transition={{ duration: 0.6, repeat: Infinity }}
                                   className="inline-block w-2 h-4 bg-orange-400 ml-1"
@@ -1200,24 +1219,22 @@ export default function CodrLanding() {
                               )}
                             </div>
                           </div>
-                          
+
                           {/* Weapon stats */}
                           <div className="grid grid-cols-2 gap-3 mt-4">
                             <div className="bg-black/40 border border-gray-800 rounded p-2 flex justify-between items-center">
                               <span className="text-xs text-gray-500">DAMAGE:</span>
-                              <span className={`text-sm font-bold ${
-                                typeof selectedWeapon.damage === 'number' && selectedWeapon.damage > 120 ? 'text-red-400' :
+                              <span className={`text-sm font-bold ${typeof selectedWeapon.damage === 'number' && selectedWeapon.damage > 120 ? 'text-red-400' :
                                 typeof selectedWeapon.damage === 'number' && selectedWeapon.damage > 80 ? 'text-orange-400' : 'text-yellow-400'
-                              }`}>
+                                }`}>
                                 {selectedWeapon.damage}
                               </span>
                             </div>
                             <div className="bg-black/40 border border-gray-800 rounded p-2 flex justify-between items-center">
                               <span className="text-xs text-gray-500">ACCURACY:</span>
-                              <span className={`text-sm font-bold ${
-                                typeof selectedWeapon.accuracy === 'number' && selectedWeapon.accuracy > 90 ? 'text-green-400' :
+                              <span className={`text-sm font-bold ${typeof selectedWeapon.accuracy === 'number' && selectedWeapon.accuracy > 90 ? 'text-green-400' :
                                 typeof selectedWeapon.accuracy === 'number' && selectedWeapon.accuracy > 70 ? 'text-yellow-400' : 'text-red-400'
-                              }`}>
+                                }`}>
                                 {selectedWeapon.accuracy}
                               </span>
                             </div>
@@ -1230,7 +1247,7 @@ export default function CodrLanding() {
                               <span className="text-sm font-bold text-purple-400">{selectedWeapon.specialty}</span>
                             </div>
                           </div>
-                          
+
                           {/* Selection button */}
                           <motion.button
                             whileHover={{ scale: 1.03 }}
@@ -1257,7 +1274,7 @@ export default function CodrLanding() {
       {/* Battle Process Timeline */}
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-black via-orange-950/8 to-black" />
-        
+
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0 }}
@@ -1283,34 +1300,34 @@ export default function CodrLanding() {
 
               <div className="space-y-16">
                 {[
-                  { 
-                    step: '01', 
-                    cmd: 'spawn', 
-                    title: 'ARENA_SPAWN', 
+                  {
+                    step: '01',
+                    cmd: 'spawn',
+                    title: 'ARENA_SPAWN',
                     desc: 'Drop into the coding arena. Choose your weapon class. Scan for threats and opportunities.',
                     icon: Target,
                     color: 'text-green-400'
                   },
-                  { 
-                    step: '02', 
-                    cmd: 'hunt', 
-                    title: 'TARGET_ACQUISITION', 
+                  {
+                    step: '02',
+                    cmd: 'hunt',
+                    title: 'TARGET_ACQUISITION',
                     desc: 'Identify weak opponents. Set up killshots. Position for maximum elimination potential.',
                     icon: Crosshair,
                     color: 'text-yellow-400'
                   },
-                  { 
-                    step: '03', 
-                    cmd: 'execute', 
-                    title: 'CODE_ELIMINATION', 
+                  {
+                    step: '03',
+                    cmd: 'execute',
+                    title: 'CODE_ELIMINATION',
                     desc: 'Deploy your weapon. Execute perfect syntax. Eliminate targets with precision strikes.',
                     icon: Skull,
                     color: 'text-orange-400'
                   },
-                  { 
-                    step: '04', 
-                    cmd: 'victory', 
-                    title: 'LAST_STANDING', 
+                  {
+                    step: '04',
+                    cmd: 'victory',
+                    title: 'LAST_STANDING',
                     desc: 'Survive the arena. Claim victory rewards. Ascend the leaderboard rankings.',
                     icon: Trophy,
                     color: 'text-red-400'
@@ -1328,20 +1345,20 @@ export default function CodrLanding() {
                     >
                       {/* Enhanced Node */}
                       <div className="relative flex-shrink-0">
-                        <motion.div 
+                        <motion.div
                           whileHover={{ scale: 1.15 }}
                           className="w-24 h-24 bg-black border-3 border-orange-500 rounded-full flex flex-col items-center justify-center text-orange-400 font-bold relative z-10 group-hover:border-orange-400 transition-colors"
                         >
                           <span className="text-sm">{item.step}</span>
                           <StepIcon className="w-5 h-5 mt-1" />
                         </motion.div>
-                        <motion.div 
+                        <motion.div
                           className="absolute inset-0 bg-orange-500/30 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500"
-                          animate={{ 
+                          animate={{
                             scale: [1, 1.1, 1],
                             opacity: [0.3, 0.5, 0.3]
                           }}
-                          transition={{ 
+                          transition={{
                             duration: 3,
                             repeat: Infinity,
                             delay: i * 0.5
@@ -1383,7 +1400,7 @@ export default function CodrLanding() {
       {/* Leaderboard Section */}
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-black via-yellow-950/8 to-black" />
-        
+
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -1434,19 +1451,17 @@ export default function CodrLanding() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className={`flex items-center justify-between p-4 rounded-lg border transition-all hover:scale-[1.02] cursor-target ${
-                      player.rank === 1 
-                        ? 'bg-yellow-500/10 border-yellow-500/40 hover:border-yellow-500/60' 
-                        : player.rank <= 3 
+                    className={`flex items-center justify-between p-4 rounded-lg border transition-all hover:scale-[1.02] cursor-target ${player.rank === 1
+                      ? 'bg-yellow-500/10 border-yellow-500/40 hover:border-yellow-500/60'
+                      : player.rank <= 3
                         ? 'bg-orange-500/10 border-orange-500/30 hover:border-orange-500/50'
                         : 'bg-gray-800/50 border-gray-600/30 hover:border-gray-500/50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        player.rank === 1 ? 'bg-yellow-500 text-black' : 
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${player.rank === 1 ? 'bg-yellow-500 text-black' :
                         player.rank <= 3 ? 'bg-orange-500 text-white' : 'bg-gray-600 text-white'
-                      }`}>
+                        }`}>
                         {player.rank}
                       </div>
                       <div>
@@ -1455,10 +1470,9 @@ export default function CodrLanding() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold ${
-                        player.rank === 1 ? 'text-yellow-400' : 
+                      <div className={`font-bold ${player.rank === 1 ? 'text-yellow-400' :
                         player.rank <= 3 ? 'text-orange-400' : 'text-gray-300'
-                      }`}>
+                        }`}>
                         {player.kills}
                       </div>
                       <div className="text-xs text-gray-500">ELIMINATIONS</div>
@@ -1474,7 +1488,7 @@ export default function CodrLanding() {
       {/* Final CTA Section */}
       <section className="py-32 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-black via-red-950/15 to-black" />
-        
+
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -1485,11 +1499,11 @@ export default function CodrLanding() {
             <div className="absolute -inset-2 bg-gradient-to-r from-red-600 via-orange-600 to-yellow-600 rounded-3xl blur-2xl opacity-40" />
             <div className="relative bg-gradient-to-br from-gray-900 to-black border-2 border-red-500/40 rounded-3xl p-16 text-center cursor-target">
               <motion.div
-                animate={{ 
+                animate={{
                   rotate: [0, 360],
                   scale: [1, 1.1, 1]
                 }}
-                transition={{ 
+                transition={{
                   rotate: { duration: 20, repeat: Infinity, ease: 'linear' },
                   scale: { duration: 3, repeat: Infinity }
                 }}
@@ -1498,26 +1512,26 @@ export default function CodrLanding() {
                 <Skull className="w-24 h-24 text-red-400" />
                 <div className="absolute inset-0 bg-red-500/30 rounded-full blur-3xl animate-pulse" />
               </motion.div>
-              
+
               <h2 className="text-5xl lg:text-6xl xl:text-7xl font-bold font-sans mb-6">
                 Enter the <span className="text-red-400">Arena</span>
               </h2>
-              
+
               <div className="mb-8">
                 <p className="text-gray-300 text-xl mb-4">
                   <code className="text-red-400 bg-black/50 px-3 py-1 rounded">$ codr --deathmatch</code>
                 </p>
                 <p className="text-gray-500 text-lg max-w-3xl mx-auto leading-relaxed">
-                  The arena awaits. Code fast, eliminate targets, survive the chaos. 
+                  The arena awaits. Code fast, eliminate targets, survive the chaos.
                   <br />
                   <span className="text-red-400 font-bold">Only one can be the last coder standing.</span>
                 </p>
               </div>
-              
+
               <div className="flex flex-col lg:flex-row gap-6 justify-center items-center">
                 <motion.button
-                  whileHover={{ 
-                    scale: 1.05, 
+                  whileHover={{
+                    scale: 1.05,
                     boxShadow: '0 0 50px rgba(220, 38, 38, 0.8)',
                   }}
                   whileTap={{ scale: 0.95 }}
@@ -1530,7 +1544,7 @@ export default function CodrLanding() {
                     <span>JOIN_DEATHMATCH</span>
                   </div>
                 </motion.button>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -1540,7 +1554,7 @@ export default function CodrLanding() {
                   <span>SPECTATE_MODE</span>
                 </motion.button>
               </div>
-              
+
               <div className="mt-12 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-red-400">16</div>
@@ -1564,7 +1578,7 @@ export default function CodrLanding() {
       </section>
 
       {/* Enhanced Footer */}
-      <motion.footer 
+      <motion.footer
         className="border-t-2 border-red-500/30 py-16 bg-black/80 backdrop-blur-sm relative z-10 overflow-hidden"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
@@ -1597,46 +1611,46 @@ export default function CodrLanding() {
         </div>
 
         <div className="container mx-auto px-6 relative z-10">
-          <motion.div 
+          <motion.div
             className="flex flex-col lg:flex-row justify-between items-center gap-8"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
           >
-            <motion.div 
+            <motion.div
               className="flex items-center gap-4"
               variants={itemVariants}
             >
-              <motion.div 
+              <motion.div
                 className="relative"
-                animate={{ 
+                animate={{
                   rotate: [0, 360],
                   scale: [1, 1.2, 1]
                 }}
-                transition={{ 
+                transition={{
                   rotate: { duration: 15, repeat: Infinity, ease: "linear" },
                   scale: { duration: 3, repeat: Infinity }
                 }}
               >
                 <Skull className="w-8 h-8 text-red-400" />
-                <motion.div 
+                <motion.div
                   className="absolute inset-0 bg-red-500/20 rounded-full blur-lg"
-                  animate={{ 
+                  animate={{
                     scale: [1, 1.5, 1],
                     opacity: [0.3, 0.7, 0.3]
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
               </motion.div>
-              <motion.span 
+              <motion.span
                 className="text-3xl font-bold font-sans"
-                whileHover={{ 
+                whileHover={{
                   scale: 1.05,
                   textShadow: "0 0 20px rgba(255, 255, 255, 0.8)"
                 }}
               >
-                cod<motion.span 
+                cod<motion.span
                   className="text-red-400"
                   animate={{
                     textShadow: [
@@ -1650,7 +1664,7 @@ export default function CodrLanding() {
                   R
                 </motion.span>
               </motion.span>
-              <motion.div 
+              <motion.div
                 className="text-red-400/60 text-sm font-bold tracking-wider"
                 animate={{ opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 3, repeat: Infinity }}
@@ -1658,15 +1672,15 @@ export default function CodrLanding() {
                 DEATHMATCH
               </motion.div>
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               className="text-center lg:text-left"
               variants={itemVariants}
             >
               <div className="text-gray-500 text-sm mb-2">
-                <motion.code 
+                <motion.code
                   className="text-red-400"
-                  animate={{ 
+                  animate={{
                     textShadow: [
                       "0 0 0 rgba(220, 38, 38, 0)",
                       "0 0 5px rgba(220, 38, 38, 0.5)",
@@ -1681,7 +1695,7 @@ export default function CodrLanding() {
               <div className="text-gray-600 text-xs">
                 Eliminate. Code. Survive. • Battle Royale Coding Platform
               </div>
-              <motion.div 
+              <motion.div
                 className="text-xs text-gray-700 mt-1"
                 animate={{ opacity: [0.5, 0.8, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
@@ -1689,8 +1703,8 @@ export default function CodrLanding() {
                 Powered by Quantum Computing & Neural Networks
               </motion.div>
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               className="flex items-center gap-6"
               variants={itemVariants}
             >
@@ -1699,10 +1713,10 @@ export default function CodrLanding() {
                 { Icon: Linkedin, color: "#dc2626" },
                 { Icon: Terminal, color: "#dc2626" }
               ].map(({ Icon, color }, i) => (
-                <motion.div 
+                <motion.div
                   key={i}
-                  whileHover={{ 
-                    scale: 1.4, 
+                  whileHover={{
+                    scale: 1.4,
                     rotate: [0, -10, 10, 0],
                     color: color
                   }}
@@ -1711,7 +1725,7 @@ export default function CodrLanding() {
                   transition={{ type: "spring", damping: 15 }}
                 >
                   <Icon className="w-6 h-6 text-gray-500 hover:text-red-400 transition-colors" />
-                  <motion.div 
+                  <motion.div
                     className="absolute inset-0 bg-red-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity"
                     animate={{
                       scale: [1, 1.2, 1],
@@ -1721,7 +1735,7 @@ export default function CodrLanding() {
                   />
                   <motion.div
                     className="absolute -inset-2 border border-red-500/0 rounded-full"
-                    whileHover={{ 
+                    whileHover={{
                       borderColor: "rgba(220, 38, 38, 0.5)",
                       scale: 1.2
                     }}
@@ -1731,15 +1745,15 @@ export default function CodrLanding() {
               ))}
             </motion.div>
           </motion.div>
-          
-          <motion.div 
+
+          <motion.div
             className="mt-8 pt-8 border-t border-gray-800 text-center"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.5 }}
           >
-            <motion.div 
+            <motion.div
               className="flex justify-center items-center gap-6 text-xs text-gray-600"
               variants={containerVariants}
               initial="hidden"
@@ -1747,7 +1761,7 @@ export default function CodrLanding() {
               viewport={{ once: true }}
             >
               <motion.span variants={itemVariants}>
-                ARENA STATUS: <motion.span 
+                ARENA STATUS: <motion.span
                   className="text-red-400"
                   animate={{ opacity: [1, 0.5, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
@@ -1757,9 +1771,9 @@ export default function CodrLanding() {
               </motion.span>
               <motion.span variants={itemVariants}>•</motion.span>
               <motion.span variants={itemVariants}>
-                ACTIVE BATTLES: <motion.span 
+                ACTIVE BATTLES: <motion.span
                   className="text-orange-400"
-                  animate={{ 
+                  animate={{
                     textShadow: [
                       "0 0 0 rgba(251, 146, 60, 0)",
                       "0 0 5px rgba(251, 146, 60, 0.8)",
@@ -1773,9 +1787,9 @@ export default function CodrLanding() {
               </motion.span>
               <motion.span variants={itemVariants}>•</motion.span>
               <motion.span variants={itemVariants}>
-                TOTAL ELIMINATIONS: <motion.span 
+                TOTAL ELIMINATIONS: <motion.span
                   className="text-yellow-400"
-                  animate={{ 
+                  animate={{
                     scale: [1, 1.05, 1],
                     textShadow: [
                       "0 0 0 rgba(250, 204, 21, 0)",
@@ -1789,7 +1803,7 @@ export default function CodrLanding() {
                 </motion.span>
               </motion.span>
             </motion.div>
-            
+
             {/* Additional footer effects */}
             <motion.div
               className="mt-4 text-xs text-gray-700"

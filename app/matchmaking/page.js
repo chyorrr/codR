@@ -12,6 +12,12 @@ const MatchmakingPage = () => {
   const [opponent, setOpponent] = useState(null);
   const [searchCancelled, setSearchCancelled] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Fix: Set mounted to true on client
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [teamSize, setTeamSize] = useState("1v1");
   const [gameMode, setGameMode] = useState("deathmatch");
   const [matchTime, setMatchTime] = useState(60);
@@ -24,6 +30,18 @@ const MatchmakingPage = () => {
   const [systemLoad, setSystemLoad] = useState(45);
   const [radarSweep, setRadarSweep] = useState(0);
   const terminalRef = useRef(null);
+
+  // Fix: Animate radar sweep
+  useEffect(() => {
+    if (!isSearching || foundOpponent) return;
+    const interval = setInterval(() => {
+      setRadarSweep(prev => (prev + 3) % 360);
+      setNetworkNodes(prev => prev + Math.floor(Math.random() * 5) - 2);
+      setPingValue(prev => Math.max(8, Math.min(45, prev + Math.floor(Math.random() * 7) - 3)));
+      setSystemLoad(prev => Math.max(30, Math.min(95, prev + Math.floor(Math.random() * 11) - 5)));
+    }, 50);
+    return () => clearInterval(interval);
+  }, [isSearching, foundOpponent]);
 
   // Team size options
   const teamSizes = ["1v1", "2v2", "3v3", "4v4"];
@@ -255,7 +273,7 @@ const MatchmakingPage = () => {
 
   const handleStartBattle = () => {
     // Navigate to battle page (to be created)
-    router.push('/battle');
+    router.push('/combat');
   };
 
   const getRankColor = (rank) => {

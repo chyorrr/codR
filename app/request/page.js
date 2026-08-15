@@ -49,17 +49,44 @@ export default function RequestPage() {
     setSelectedPlayer(player);
   };
 
+  /**
+   * Real-time challenges need a socket layer that does not exist yet, so the
+   * challenge resolves into a match against that player's AI stand-in — which
+   * at least honours their rating rather than dropping the player nowhere.
+   */
   const sendChallenge = () => {
     if (!selectedPlayer) return;
-
-    // For now, simulate sending — in Phase 3 this would use WebSocket/Realtime
     setChallengeSent(true);
 
-    // Store as opponent in session and go to matchmaking
+    const difficulty =
+      selectedPlayer.elo_rating >= 2000 ? 'nightmare' :
+      selectedPlayer.elo_rating >= 1700 ? 'elite' :
+      selectedPlayer.elo_rating >= 1300 ? 'veteran' : 'rookie';
+
     setTimeout(() => {
-      sessionStorage.setItem('challengeOpponent', JSON.stringify(selectedPlayer));
-      router.push('/matchmaking');
-    }, 1500);
+      sessionStorage.setItem('matchConfig', JSON.stringify({
+        gameMode: 'deathmatch',
+        teamSize: '1v1',
+        matchTime: 120,
+        vsComputer: true,
+        botDifficulty: difficulty,
+        opponent: {
+          isBot: true,
+          difficulty,
+          username: selectedPlayer.username,
+          rank_title: selectedPlayer.rank_title,
+          elo_rating: selectedPlayer.elo_rating,
+          wins: selectedPlayer.wins,
+          losses: selectedPlayer.losses,
+          languages: ['JavaScript'],
+          specialty: 'Challenger',
+          location: 'Arena',
+          killStreak: selectedPlayer.kill_streak || 0,
+          avgResponseTime: 20,
+        },
+      }));
+      router.push('/combat');
+    }, 1400);
   };
 
   const getRankColor = (title) => {
@@ -256,9 +283,9 @@ export default function RequestPage() {
                 >
                   <Swords className="w-16 h-16 text-purple-400 mx-auto" />
                 </motion.div>
-                <h3 className="text-purple-400 font-mono font-bold text-xl mt-4">CHALLENGE SENT!</h3>
+                <h3 className="text-purple-400 font-mono font-bold text-xl mt-4">CHALLENGE ACCEPTED!</h3>
                 <p className="text-gray-400 font-mono text-sm mt-2">
-                  Taking you to the matchmaking arena...
+                  Dropping you into the arena…
                 </p>
                 <Loader2 className="w-6 h-6 animate-spin text-purple-400 mx-auto mt-4" />
               </motion.div>

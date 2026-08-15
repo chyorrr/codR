@@ -5,10 +5,13 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useUser, useAuth, SignInButton } from '@clerk/nextjs';
 import {
-  ArrowLeft, User, Trophy, Swords, Target, Shield, Star,
-  Flame, TrendingUp, Edit3, Save, X, Loader2, Lock,
-  Zap, Award, Clock, BarChart3
+  ArrowLeft, User, Trophy, Swords, Target, Shield,
+  Flame, Edit3, Save, X, Loader2, Lock,
+  Zap, BarChart3, Info
 } from 'lucide-react';
+
+import { getLocalProfile, getLocalMatches } from '../lib/gameStore';
+import { xpProgress } from '../lib/weapons';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -23,26 +26,47 @@ export default function ProfilePage() {
   const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn) return;
+
     const fetchProfile = async () => {
+      const local = getLocalProfile();
+
       try {
         const res = await fetch('/api/profile');
         if (res.ok) {
           const data = await res.json();
-          setProfile(data.profile);
+          // A synthetic profile (nothing persisted) means the DB is unreachable;
+          // local stats are the truthful record in that case.
+          const usingLocal = data.persisted === false;
+          const merged = usingLocal
+            ? { ...data.profile, ...local, username: data.profile?.username || local.username }
+            : data.profile;
+
+          setProfile(merged);
+          setOffline(usingLocal);
           setWeapons(data.weapons || []);
-          setMatches(data.recentMatches || []);
-          setEditUsername(data.profile?.username || '');
-          setEditBio(data.profile?.bio || '');
+          setMatches(usingLocal ? getLocalMatches() : (data.recentMatches || []));
+          setEditUsername(merged?.username || '');
+          setEditBio(merged?.bio || '');
+        } else {
+          setProfile(local);
+          setOffline(true);
+          setMatches(getLocalMatches());
+          setEditUsername(local.username);
         }
-      } catch (err) {
-        console.error('[Profile] Failed to fetch:', err);
+      } catch {
+        setProfile(local);
+        setOffline(true);
+        setMatches(getLocalMatches());
+        setEditUsername(local.username);
       } finally {
         setLoading(false);
       }
     };
+
     fetchProfile();
   }, [authLoaded, isSignedIn]);
 
@@ -139,6 +163,16 @@ export default function ProfilePage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+        {offline && (
+          <div className="flex items-start gap-2 text-xs font-mono text-gray-500 bg-gray-900/40 border border-gray-800 rounded-lg p-3">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Cloud profile is unreachable, so these are your locally saved stats. Edits will not persist until the
+              database is back.
+            </span>
+          </div>
+        )}
+
         {/* Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -218,11 +252,29 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* ELO Display */}
-            <div className="text-right">
+            {/* ELO + level progress */}
+            <div className="text-right shrink-0">
               <div className="text-xs text-gray-500 font-mono mb-1">ELO RATING</div>
               <div className="text-4xl font-bold text-yellow-400 font-mono">{profile?.elo_rating || 1200}</div>
-              <div className="text-xs text-gray-500 font-mono mt-1">{profile?.xp || 0} XP</div>
+              {(() => {
+                const { level, into, needed } = xpProgress(profile?.xp || 0);
+                return (
+                  <div className="mt-2 w-32 ml-auto">
+                    <div className="flex justify-between text-[10px] font-mono text-gray-500 mb-1">
+                      <span>LVL {level}</span>
+                      <span>{into}/{needed} XP</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-cyan-500 to-green-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(into / needed) * 100}%` }}
+                        transition={{ duration: 0.8 }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </motion.div>
@@ -314,7 +366,9 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-2">
               {matches.map((match, i) => {
-                const won = match.winner_id === user?.id;
+                // Local matches carry `won`/`elo_delta`; server rows carry winner/loser ids.
+                const won = match.won ?? (match.winner_id === user?.id);
+                const delta = match.elo_delta ?? (won ? match.winner_elo_delta : match.loser_elo_delta);
                 return (
                   <div
                     key={match.id || i}
@@ -332,7 +386,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-4 text-xs font-mono">
                       <span className={won ? 'text-green-400' : 'text-red-400'}>
-                        {won ? `+${match.winner_elo_delta}` : match.loser_elo_delta} ELO
+                        {delta > 0 ? `+${delta}` : delta} ELO
                       </span>
                       <span className="text-gray-600">
                         {new Date(match.created_at).toLocaleDateString()}

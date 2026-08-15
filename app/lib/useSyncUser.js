@@ -92,9 +92,18 @@ export function useSyncUser() {
         setSyncStatus('synced');
         setError(null);
       } catch (err) {
-        console.error('[useSyncUser] Sync failed:', err);
-        setSyncStatus('error');
-        setError(err.message || 'Unknown error during sync');
+        // The database is optional — gameplay and local progress continue
+        // regardless, so an unreachable host is a warning, not an error.
+        const message = err?.message || 'Unknown error during sync';
+        const offline = /fetch|network|ENOTFOUND|Failed to fetch/i.test(message);
+        if (offline) {
+          console.warn('[useSyncUser] Supabase unreachable — running on local progress only');
+          setSyncStatus('offline');
+        } else {
+          console.error('[useSyncUser] Sync failed:', err);
+          setSyncStatus('error');
+        }
+        setError(message);
       }
     };
 

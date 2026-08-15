@@ -3,6 +3,8 @@
 :root {
   --background: #000000;
   --foreground: #ededed;
+  /* Driven by the settings provider; consumed by the combat editor. */
+  --code-font-size: 14px;
 }
 
 @theme inline {
@@ -17,6 +19,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   cursor: crosshair;
+  overflow-x: hidden;
 }
 
 /* Custom game cursor */
@@ -28,7 +31,6 @@ a, button, [role="button"], input[type="submit"], select, .cursor-target {
   cursor: pointer;
 }
 
-/* Enhanced hover states for game-like feel */
 a:hover, button:hover, [role="button"]:hover, .cursor-target:hover {
   filter: brightness(1.1);
 }
@@ -38,13 +40,19 @@ button:active, [role="button"]:active {
   transition: transform 0.1s ease;
 }
 
+button:disabled, button:disabled:active {
+  transform: none;
+  filter: none;
+  cursor: not-allowed;
+}
+
 input, textarea {
   cursor: text;
 }
 
-/* Focus-visible for keyboard accessibility */
+/* Keyboard accessibility */
 *:focus-visible {
-  outline: 2px solid rgba(239, 68, 68, 0.6);
+  outline: 2px solid rgba(34, 197, 94, 0.8);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -52,6 +60,7 @@ input, textarea {
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #111;
@@ -64,40 +73,52 @@ input, textarea {
   background: #555;
 }
 
-/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: #333 #111;
 }
 
-/* Smooth scroll */
 html {
   scroll-behavior: smooth;
 }
 
-/* Selection color */
 ::selection {
   background: rgba(239, 68, 68, 0.3);
   color: #fff;
 }
 
-/* Smooth page transitions */
-.page-transition {
-  animation: pageIn 0.3s ease-out;
+/* Screen-reader-only helper for landmark headings. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
-@keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/*
+ * Motion control.
+ * `data-animations="off"` comes from the settings page; the media query honours
+ * the OS-level preference. Both collapse animation to an instant state change.
+ */
+html[data-animations="off"] *,
+html[data-animations="off"] *::before,
+html[data-animations="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
-/* Reduced motion preference */
+html[data-animations="off"] .animate-pulse,
+html[data-animations="off"] .animate-spin,
+html[data-animations="off"] .animate-ping {
+  animation: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -107,7 +128,6 @@ html {
   }
 }
 
-/* Performance hints for animated elements */
 .will-change-transform {
   will-change: transform;
 }

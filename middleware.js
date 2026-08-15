@@ -1,26 +1,17 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Routes that require authentication
+/**
+ * Only pages that show account data are gated. Gameplay routes stay open so the
+ * arena is playable without an account — /api/match handles guests itself and
+ * simply does not persist their results.
+ *
+ * /settings is deliberately public: it holds device-local preferences (sound,
+ * motion, editor size, bot difficulty) that guests need too.
+ */
 const isProtectedRoute = createRouteMatcher([
   '/profile(.*)',
-  '/settings(.*)',
   '/api/profile(.*)',
-  '/api/match(.*)',
   '/api/weapons/equip(.*)',
-]);
-
-// Routes that are always public
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/arsenal(.*)',
-  '/matchmaking(.*)',
-  '/combat(.*)',
-  '/leaderboard(.*)',
-  '/api/weapons',
-  '/api/leaderboard(.*)',
-  '/api/battle/execute(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

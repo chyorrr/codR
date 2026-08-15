@@ -5,18 +5,18 @@ import { Github, Linkedin, Zap, Users, Trophy, Terminal, Code, Clock, Shield, Bi
 import { useRouter } from 'next/navigation';
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { CodeBackground } from './ClientComponents';
-import { createClient } from '../../utils/supabase/client';
+import { useSettings } from '../lib/settings';
+import sfx from '../lib/sfx';
 
 export default function CodrLanding() {
-  const supabase = createClient();
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
+  const { settings, updateSetting } = useSettings();
   const [terminalLines, setTerminalLines] = useState([]);
   const [currentLine, setCurrentLine] = useState(0);
   const [killCount, setKillCount] = useState(0);
   const [isArenaActive, setIsArenaActive] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [currentRoundTime, setCurrentRoundTime] = useState('60');
   const [glitchIntensity, setGlitchIntensity] = useState(0);
   const [leaderboardPlayers, setLeaderboardPlayers] = useState([]);
@@ -162,23 +162,26 @@ export default function CodrLanding() {
 
   const [allWeapons, setAllWeapons] = useState([]);
 
-  // Fetch data from Supabase DB and APIs
+  // Weapons and rankings both come from the local-first API, which serves the
+  // bundled catalog when the database is unavailable.
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: weapons } = await supabase.from('weapons').select('*');
-        if (weapons && weapons.length > 0) {
-          setAllWeapons(weapons);
-          const primaryWeapons = weapons.filter(w => w.category === 'Primary');
-          const secondaryWeapons = weapons.filter(w => w.category === 'Secondary');
-          setWeaponClasses(primaryWeapons.length > 0 ? primaryWeapons : weapons);
-          setSelectedCategory('basic');
-          if (primaryWeapons.length > 0) {
-            setSelectedWeapon(primaryWeapons[0]);
+        const res = await fetch('/api/weapons');
+        if (res.ok) {
+          const data = await res.json();
+          const weapons = data.weapons || [];
+          if (weapons.length > 0) {
+            setAllWeapons(weapons);
+            const basic = weapons.filter(w => w.tier === 'basic');
+            const initial = basic.length > 0 ? basic : weapons;
+            setWeaponClasses(initial);
+            setSelectedCategory('basic');
+            setSelectedWeapon(initial[0]);
           }
         }
-      } catch (err) {
-        console.warn('[CodrLanding] Failed to fetch weapons from DB, using local data');
+      } catch {
+        /* the arsenal section simply stays empty */
       }
 
       try {
@@ -187,23 +190,30 @@ export default function CodrLanding() {
           const data = await res.json();
           setLeaderboardPlayers(data.players || []);
         }
-      } catch (err) {
-        console.warn('[CodrLanding] Failed to fetch leaderboard from API');
+      } catch {
+        /* leaderboard preview is decorative here */
       }
     };
     fetchData();
   }, []);
 
   const changeArsenalCategory = (category) => {
-    const targetCategory = category === 'basic' ? 'Primary' : 'Secondary';
-    const filtered = allWeapons.filter(w => w.category === targetCategory);
+    const filtered = allWeapons.filter(w => w.tier === category);
     setWeaponClasses(filtered);
     setSelectedCategory(category);
-    // Select first weapon in category
     if (filtered.length > 0) {
       setSelectedWeapon(filtered[0]);
       simulateTerminalBoot(filtered[0]);
+    } else {
+      setSelectedWeapon(null);
     }
+  };
+
+  /** Take the previewed weapon straight into a match. */
+  const deployWeapon = (weapon) => {
+    if (!weapon) return;
+    sessionStorage.setItem('selectedWeapon', JSON.stringify(weapon));
+    router.push('/matchmaking');
   };
 
   const selectWeapon = (weapon) => {
@@ -211,8 +221,21 @@ export default function CodrLanding() {
     simulateTerminalBoot(weapon);
   };
 
+  // Timers for the arsenal terminal, so rapid weapon switching cannot leave
+  // several boot sequences writing into the same output.
+  const bootInterval = useRef(null);
+  const bootTimeout = useRef(null);
+
+  const clearBootTimers = () => {
+    clearInterval(bootInterval.current);
+    clearTimeout(bootTimeout.current);
+  };
+
+  useEffect(() => clearBootTimers, []);
+
   const simulateTerminalBoot = (weapon) => {
     if (!weapon) return;
+    clearBootTimers();
 
     // DB weapons don't have terminal.bootSequence, generate one from metadata
     const bootSequence = weapon.terminal?.bootSequence || [
@@ -227,13 +250,13 @@ export default function CodrLanding() {
     setTerminalActive(true);
 
     let i = 0;
-    const interval = setInterval(() => {
+    bootInterval.current = setInterval(() => {
       if (i < bootSequence.length) {
         setTerminalOutput(prev => [...prev, bootSequence[i]]);
         i++;
       } else {
-        clearInterval(interval);
-        setTimeout(() => {
+        clearInterval(bootInterval.current);
+        bootTimeout.current = setTimeout(() => {
           setTerminalOutput(prev => [...prev,
           `$ weapon_initialized "${weapon.name}" --ready`,
           `$ damage_output ${weapon.damage} --accuracy=${weapon.accuracy}`,
@@ -398,12 +421,19 @@ export default function CodrLanding() {
 
             <div className="flex items-center gap-4">
               <motion.button
-                onClick={() => setIsAudioEnabled(!isAudioEnabled)}
+                onClick={() => {
+                  const next = !settings.soundEnabled;
+                  updateSetting('soundEnabled', next);
+                  // Confirm audibly that sound is now on.
+                  if (next) setTimeout(() => sfx.select(), 60);
+                }}
                 className="p-2 rounded-lg bg-gray-800/50 text-gray-400 hover:text-red-400 transition-colors cursor-target"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
+                aria-label={settings.soundEnabled ? 'Mute sound effects' : 'Enable sound effects'}
+                title={settings.soundEnabled ? 'Mute sound effects' : 'Enable sound effects'}
               >
-                {isAudioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                {settings.soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </motion.button>
 
               <motion.div
@@ -705,36 +735,47 @@ export default function CodrLanding() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-6">
-                    {isLoaded && isSignedIn ? (
-                      <motion.button
-                        whileHover={{
-                          scale: 1.05,
-                          boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)',
-                        }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => window.location.href = '/arsenal'}
-                        className="relative group flex-1 cursor-target"
-                      >
-                        <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg blur opacity-60 group-hover:opacity-90 transition" />
-                        <div className="relative flex items-center justify-center gap-3 bg-red-600 text-white px-10 py-5 rounded-lg font-sans font-bold text-lg">
-                          <Crosshair className="w-6 h-6" />
-                          <span>ENTER_ARENA</span>
-                        </div>
-                      </motion.button>
-                    ) : isLoaded ? (
+                  {/* Playing vs the computer needs no account — that CTA is always first. */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <motion.button
+                      whileHover={{ scale: 1.04, boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)' }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => router.push('/matchmaking')}
+                      className="relative group flex-1 cursor-target"
+                    >
+                      <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg blur opacity-60 group-hover:opacity-90 transition" />
+                      <div className="relative flex items-center justify-center gap-3 bg-red-600 text-white px-8 py-5 rounded-lg font-sans font-bold text-lg">
+                        <Crosshair className="w-6 h-6" />
+                        <span>PLAY VS COMPUTER</span>
+                      </div>
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => router.push('/arsenal')}
+                      className="flex items-center justify-center gap-3 bg-gray-900 border-2 border-red-500/40 text-red-400 px-8 py-5 rounded-lg font-sans font-bold text-lg hover:bg-red-500/10 transition-colors cursor-target"
+                    >
+                      <Sword className="w-6 h-6" />
+                      <span>BROWSE ARSENAL</span>
+                    </motion.button>
+
+                    {isLoaded && !isSignedIn && (
                       <SignInButton mode="modal">
                         <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="flex items-center justify-center gap-3 bg-gray-900 border-2 border-red-500/40 text-red-400 px-10 py-5 rounded-lg font-sans font-bold text-lg hover:bg-red-500/10 transition-colors cursor-target w-full sm:w-auto"
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.96 }}
+                          className="flex items-center justify-center gap-3 bg-transparent border-2 border-gray-700 text-gray-400 px-8 py-5 rounded-lg font-sans font-bold text-lg hover:border-gray-500 hover:text-gray-200 transition-colors cursor-target"
                         >
-                          <Lock className="w-6 h-6" />
+                          <Lock className="w-5 h-5" />
                           <span>SIGN IN</span>
                         </motion.button>
                       </SignInButton>
-                    ) : null}
+                    )}
                   </div>
+                  <p className="text-gray-600 text-sm mt-4 font-sans">
+                    No account needed to play — progress saves on this device.
+                  </p>
                 </motion.div>
               </div>
 
@@ -1263,9 +1304,10 @@ export default function CodrLanding() {
 
                           {/* Selection button */}
                           <motion.button
+                            onClick={() => deployWeapon(selectedWeapon)}
                             whileHover={{ scale: 1.03 }}
                             whileTap={{ scale: 0.97 }}
-                            className="w-full mt-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/60 text-orange-400 py-2 px-4 rounded font-mono transition-colors"
+                            className="w-full mt-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/60 text-orange-400 py-2 px-4 rounded font-mono transition-colors cursor-target"
                           >
                             $ SELECT_WEAPON --confirm
                           </motion.button>
@@ -1451,7 +1493,10 @@ export default function CodrLanding() {
                 </div>
               </div>
               <div className="p-8 space-y-4">
-                {(leaderboardPlayers.length > 0 ? leaderboardPlayers : [{ username: 'LOADING...', score: 0, rank_title: '...', equipped_weapon: { name: '...' } }]).slice(0, 5).map((player, i) => {
+                {(leaderboardPlayers.length > 0
+                  ? leaderboardPlayers
+                  : [{ username: 'LOADING…', elo_rating: null, rank_title: '…' }]
+                ).slice(0, 5).map((player, i) => {
                   const rank = i + 1;
                   return (
                   <motion.div
@@ -1475,16 +1520,19 @@ export default function CodrLanding() {
                       </div>
                       <div>
                         <div className="font-bold text-white font-mono">{player.username}</div>
-                        <div className="text-xs text-gray-400">{player.equipped_weapon?.name || 'Default Weapon'}</div>
+                        <div className="text-xs text-gray-400">
+                          {player.rank_title || 'Recruit'}
+                          {typeof player.winRate === 'number' && ` · ${player.winRate}% WR`}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className={`font-bold ${rank === 1 ? 'text-yellow-400' :
                         rank <= 3 ? 'text-orange-400' : 'text-gray-300'
                         }`}>
-                        {player.score}
+                        {player.elo_rating ?? '—'}
                       </div>
-                      <div className="text-xs text-gray-500">SCORE / ELO</div>
+                      <div className="text-xs text-gray-500">ELO</div>
                     </div>
                   </motion.div>
                 )})}
@@ -1555,12 +1603,13 @@ export default function CodrLanding() {
                 </motion.button>
 
                 <motion.button
+                  onClick={() => router.push('/leaderboard')}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="border-2 border-red-500/50 text-red-400 px-16 py-6 rounded-xl font-sans font-bold text-xl hover:bg-red-500/10 transition-colors flex items-center gap-4"
+                  className="border-2 border-red-500/50 text-red-400 px-16 py-6 rounded-xl font-sans font-bold text-xl hover:bg-red-500/10 transition-colors flex items-center gap-4 cursor-target"
                 >
-                  <Lock className="w-7 h-7" />
-                  <span>SPECTATE_MODE</span>
+                  <Trophy className="w-7 h-7" />
+                  <span>VIEW_RANKINGS</span>
                 </motion.button>
               </div>
 

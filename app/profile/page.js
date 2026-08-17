@@ -12,6 +12,7 @@ import {
 
 import { getLocalProfile, getLocalMatches } from '../lib/gameStore';
 import { xpProgress } from '../lib/weapons';
+import { ACHIEVEMENTS, getUnlocked } from '../lib/achievements';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -27,6 +28,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [offline, setOffline] = useState(false);
+  const [unlocked, setUnlocked] = useState({});
+
+  useEffect(() => setUnlocked(getUnlocked()), []);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn) return;
@@ -303,6 +307,56 @@ export default function ProfilePage() {
             );
           })}
         </div>
+
+        {/* Achievements */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-fuchsia-400 font-mono flex items-center gap-2">
+              <Trophy className="w-5 h-5" />
+              ACHIEVEMENTS
+            </h3>
+            <span className="font-mono text-sm text-gray-500">
+              {Object.keys(unlocked).length} / {ACHIEVEMENTS.length}
+            </span>
+          </div>
+
+          <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-5">
+            <motion.div
+              className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-400"
+              initial={{ width: 0 }}
+              animate={{ width: `${(Object.keys(unlocked).length / ACHIEVEMENTS.length) * 100}%` }}
+              transition={{ duration: 0.8 }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {ACHIEVEMENTS.map((a) => {
+              const isUnlocked = Boolean(unlocked[a.id]);
+              return (
+                <div
+                  key={a.id}
+                  title={a.description}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    isUnlocked
+                      ? 'border-fuchsia-500/40 bg-fuchsia-500/10'
+                      : 'border-gray-800 bg-black/20 opacity-45'
+                  }`}
+                >
+                  <div className={`text-2xl mb-1 ${isUnlocked ? '' : 'grayscale'}`}>{a.icon}</div>
+                  <div className={`font-mono text-xs font-bold ${isUnlocked ? 'text-fuchsia-300' : 'text-gray-500'}`}>
+                    {a.name}
+                  </div>
+                  <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">{a.description}</div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
 
         {/* Equipped Weapons */}
         <motion.div

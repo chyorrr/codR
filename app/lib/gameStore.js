@@ -12,6 +12,7 @@ import { levelFromXp } from './weapons';
 
 const PROFILE_KEY = 'codR_local_profile';
 const MATCHES_KEY = 'codR_local_matches';
+const SOLVED_KEY = 'codR_solved_weapons';
 const MAX_STORED_MATCHES = 50;
 
 export const DEFAULT_PROFILE = {
@@ -139,11 +140,26 @@ export function recordLocalMatch({ won, score = 0, weaponId = null, opponent = n
   };
 }
 
+/** Distinct challenges the player has ever fully solved — drives progression goals. */
+export function getSolvedWeaponIds() {
+  return read(SOLVED_KEY, []);
+}
+
+export function recordSolvedWeapon(weaponId) {
+  if (!weaponId) return getSolvedWeaponIds();
+  const solved = getSolvedWeaponIds();
+  if (solved.includes(weaponId)) return solved;
+  const next = [...solved, weaponId];
+  write(SOLVED_KEY, next);
+  return next;
+}
+
 export function resetLocalProgress() {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(PROFILE_KEY);
     window.localStorage.removeItem(MATCHES_KEY);
+    window.localStorage.removeItem(SOLVED_KEY);
   } catch {
     /* ignore */
   }

@@ -9,18 +9,15 @@ import {
 import { useRouter } from 'next/navigation';
 
 import { BOT_DIFFICULTIES, DIFFICULTY_ORDER, createBot } from '../lib/bot';
+import { GAME_MODE_LIST, getGameMode } from '../lib/gameModes';
 import { useSettings } from '../lib/settings';
 import sfx from '../lib/sfx';
 
 const TEAM_SIZES = ['1v1', '2v2', '3v3', '4v4'];
 const ROUND_TIME = { '1v1': 120, '2v2': 150, '3v3': 180, '4v4': 240 };
 
-const GAME_MODES = [
-  { id: 'deathmatch', name: 'Deathmatch', description: 'Damage until one side drops' },
-  { id: 'time_attack', name: 'Time Attack', description: 'Solve as many as you can before the clock' },
-  { id: 'sudden_death', name: 'Sudden Death', description: 'One failed submission ends it' },
-  { id: 'endurance', name: 'Endurance', description: 'Long rounds, escalating difficulty' },
-];
+// Single source of truth — combat reads the same definitions.
+const GAME_MODES = GAME_MODE_LIST;
 
 const SEARCH_SEQUENCE = [
   '> Initializing codR protocol...',
@@ -75,7 +72,11 @@ export default function MatchmakingPage() {
     if (settings.botDifficulty) setDifficulty(settings.botDifficulty);
   }, [settings.botDifficulty]);
 
-  useEffect(() => setMatchTime(ROUND_TIME[teamSize] ?? 120), [teamSize]);
+  // Each mode has a length that suits it (Endurance is long, Deathmatch short);
+  // team size nudges it further for the search flow.
+  useEffect(() => {
+    setMatchTime(getGameMode(gameMode).defaultTime);
+  }, [gameMode]);
 
   // Radar + telemetry animation, only while actually searching.
   useEffect(() => {
@@ -299,6 +300,35 @@ export default function MatchmakingPage() {
                 </div>
               </Panel>
 
+              <Panel title="SELECT_MODE" icon={Gamepad2}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {GAME_MODES.map((m, i) => {
+                    const active = gameMode === m.id;
+                    return (
+                      <motion.button
+                        key={m.id}
+                        onClick={() => { setGameMode(m.id); sfx.select(); }}
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                        aria-pressed={active}
+                        className={`text-left p-4 rounded-xl border-2 transition-all ${
+                          active ? 'border-purple-500/60 bg-purple-500/10' : 'border-gray-800 hover:border-gray-700'
+                        }`}
+                      >
+                        <div className={`font-mono font-bold text-sm ${active ? 'text-purple-300' : 'text-gray-400'}`}>
+                          {m.name}
+                        </div>
+                        <p className="text-gray-500 text-xs font-mono mt-1">{m.description}</p>
+                        <p className={`text-[11px] font-mono mt-2 ${active ? 'text-purple-400/80' : 'text-gray-600'}`}>
+                          {m.tagline}
+                        </p>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </Panel>
+
               <Panel title="ROUND_LENGTH" icon={Timer}>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[60, 120, 180, 300].map((secs) => (
@@ -348,11 +378,25 @@ export default function MatchmakingPage() {
               </div>
 
               <div className={`rounded-xl border-2 p-5 ${BOT_DIFFICULTIES[difficulty].border} bg-black/40`}>
-                <div className="text-xs font-mono text-gray-500 mb-1">SELECTED OPPONENT</div>
-                <div className={`text-2xl font-bold font-mono ${BOT_DIFFICULTIES[difficulty].color}`}>
-                  {BOT_DIFFICULTIES[difficulty].name}
+                <div className="text-xs font-mono text-gray-500 mb-1">LOADOUT</div>
+                {getGameMode(gameMode).scoreAttack ? (
+                  <>
+                    <div className="text-2xl font-bold font-mono text-amber-400">SOLO RUN</div>
+                    <p className="text-gray-500 text-xs font-mono mt-2">
+                      {getGameMode(gameMode).name} has no opponent — score is all that matters.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className={`text-2xl font-bold font-mono ${BOT_DIFFICULTIES[difficulty].color}`}>
+                      {BOT_DIFFICULTIES[difficulty].name}
+                    </div>
+                    <p className="text-gray-500 text-xs font-mono mt-2">{BOT_DIFFICULTIES[difficulty].description}</p>
+                  </>
+                )}
+                <div className="mt-3 pt-3 border-t border-gray-800 text-xs font-mono text-gray-500">
+                  {getGameMode(gameMode).name} · {matchTime}s
                 </div>
-                <p className="text-gray-500 text-xs font-mono mt-2">{BOT_DIFFICULTIES[difficulty].description}</p>
               </div>
             </div>
           </div>

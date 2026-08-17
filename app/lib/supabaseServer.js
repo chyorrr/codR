@@ -10,7 +10,15 @@ import { createClient } from '@supabase/supabase-js';
  */
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+/**
+ * The service role key bypasses RLS, which is exactly what these routes need:
+ * the schema grants the anon key read-only access, so match results and ELO can
+ * only be written by trusted server code. It falls back to the anon key so the
+ * app still reads fine if only the public key is configured.
+ */
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 const QUERY_TIMEOUT_MS = 4000;
 const BREAKER_COOLDOWN_MS = 60_000;
 
@@ -19,6 +27,11 @@ let breakerOpenedAt = 0;
 
 export function isConfigured() {
   return Boolean(URL && KEY && /^https?:\/\//.test(URL));
+}
+
+/** True when writes are actually permitted (service role present). */
+export function canWrite() {
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 export function getSupabase() {

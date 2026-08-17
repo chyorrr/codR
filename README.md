@@ -23,6 +23,15 @@ Open <http://localhost:3000> and hit **PLAY VS COMPUTER**. That's the whole setu
 ## Core features
 
 - **Play vs Computer.** Four AI difficulty tiers — Rookie, Veteran, Elite, Nightmare — each with its own solve speed, accuracy and damage range. The bot works on a visible progress bar: you are racing something real, not a random number generator.
+- **Four game modes that actually differ.**
+  | Mode | Rule change |
+  | --- | --- |
+  | Deathmatch | Straight fight, first to zero HP loses |
+  | Time Attack | No opponent, no penalties — bank as many points as the clock allows |
+  | Sudden Death | Double damage, but one failed submission ends the match |
+  | Endurance | Long round, and the bot solves ~12% faster every challenge you clear |
+- **Power-ups.** Perfect solves build charge you spend on **Freeze** (stall the bot 12s), **Insight** (reveal hints free), **Overclock** (double your next hit) or **Patch** (heal 25 HP). Keys `1`–`4`.
+- **14 achievements** — Flawless, Clutch, Giant Slayer, Unstoppable and more, tracked across runs and shown on your profile.
 - **14 real coding challenges.** From `sumArray` and FizzBuzz up to Levenshtein edit distance and coin change. Every one has a full test suite, hints, and a damage rating tied to its difficulty.
 - **Sandboxed judge.** Your code compiles once inside a locked-down Node `vm` context with no host globals (no `require`, `process`, `fetch` or timers), then each test case runs against it with a per-test timeout.
 - **Combat maths that reward good play.** Damage scales with tests passed and the weapon's rating, plus bonuses for solving fast, solving first try, and chaining perfect solves into a combo.
@@ -60,19 +69,38 @@ Every server route calls the database through `safeQuery` / `safeWrite`. If the 
 
 ## Connecting a database (optional)
 
-The app runs without this. To persist profiles and a global leaderboard, create a Supabase project and set:
+The app runs fully without this. Add it to persist profiles and share one global leaderboard across players.
+
+**1. Create a Supabase project** at [supabase.com](https://supabase.com).
+
+**2. Run the schema.** Open Dashboard → SQL Editor → New query, paste all of [`supabase/schema.sql`](supabase/schema.sql), and Run. It is idempotent, so re-running is safe. It creates:
+
+| Table | Purpose |
+| --- | --- |
+| `profiles` | One row per player — ELO, XP, W/L, streaks, rank title. `id` is the Clerk user id (`text`, not uuid). |
+| `weapons` | Optional challenge overrides, merged over the bundled catalog by `id` then `name`. |
+| `user_weapons` | Inventory and which weapon is equipped per category. |
+| `match_history` | One row per finished match, with ELO deltas and mode. |
+
+It also adds the indexes the app's queries actually use (ELO ordering for the leaderboard, a `pg_trgm` index for username search), and enables RLS.
+
+**3. Set the keys** (Dashboard → Project Settings → API):
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<clerk publishable key>
-CLERK_SECRET_KEY=<clerk secret key>
-NEXT_PUBLIC_SITE_URL=https://your-domain.com
+SUPABASE_SERVICE_ROLE_KEY=<service_role key>
 ```
 
-Expected tables: `profiles`, `weapons`, `user_weapons`, `match_history`. Rows in `weapons` are merged over the bundled catalog by `id`, then by `name` — a DB row missing test cases will not break the local challenge it matches.
+### How the security model works
 
-> **Note:** the Supabase project referenced by the current local `.env` no longer resolves (its hostname fails DNS). That is why everything above is built to work without it — point the variables at a live project to re-enable cloud sync. See `.env.example`.
+RLS grants the anon key **read-only** access. Every write — match results, ELO, profiles — happens in a server API route using the `service_role` key, which bypasses RLS. Nothing in the browser can write to the database, so a leaked anon key cannot be used to fabricate a win or inflate a rating.
+
+> `SUPABASE_SERVICE_ROLE_KEY` must never be renamed to `NEXT_PUBLIC_*` — that prefix ships it to every visitor.
+
+If you set only the anon key, reads work and writes silently no-op (the UI says progress is local). If you set neither, the bundled catalog and local progress carry the whole game.
+
+> **Note:** the Supabase project referenced by the current local `.env` no longer resolves (its hostname fails DNS). That is why everything is built to work without it — point the variables at a live project to re-enable cloud sync. See `.env.example`.
 
 ---
 

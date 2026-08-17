@@ -12,6 +12,7 @@ import {
 import { useSettings } from '../lib/settings';
 import { BOT_DIFFICULTIES, DIFFICULTY_ORDER } from '../lib/bot';
 import { resetLocalProgress, getLocalProfile } from '../lib/gameStore';
+import { resetAchievements, getUnlocked, ACHIEVEMENTS } from '../lib/achievements';
 import sfx from '../lib/sfx';
 
 export default function SettingsPage() {
@@ -38,13 +39,15 @@ export default function SettingsPage() {
   };
 
   const handleResetProgress = () => {
-    if (!confirm('Reset local progress? Your ELO, XP, wins and match history on this device will be cleared. This cannot be undone.')) return;
+    if (!confirm('Reset local progress? Your ELO, XP, wins, match history and achievements on this device will be cleared. This cannot be undone.')) return;
     resetLocalProgress();
+    resetAchievements();
     setResetDone(true);
     setTimeout(() => setResetDone(false), 2500);
   };
 
   const localProfile = typeof window !== 'undefined' ? getLocalProfile() : null;
+  const unlockedCount = typeof window !== 'undefined' ? Object.keys(getUnlocked()).length : 0;
 
   const Toggle = ({ enabled, onChange, label, description }) => (
     <div className="flex items-center justify-between py-3 gap-4">
@@ -281,6 +284,7 @@ export default function SettingsPage() {
           {localProfile && (
             <p className="text-gray-500 font-mono text-xs mb-4">
               Local record: {localProfile.wins}W / {localProfile.losses}L · {localProfile.elo_rating} ELO · {localProfile.xp} XP
+              {' · '}{unlockedCount}/{ACHIEVEMENTS.length} achievements
             </p>
           )}
 

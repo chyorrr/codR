@@ -45,13 +45,28 @@ export async function GET(request) {
   });
 }
 
+/**
+ * The database uses snake_case (and avoids the reserved word `range`); the UI
+ * reads the catalog's camelCase names. Translate on the way in.
+ */
+function normalise(row) {
+  const { fire_rate, ammo_type, weapon_range, ...rest } = row;
+  return {
+    ...rest,
+    ...(fire_rate ? { fireRate: fire_rate } : {}),
+    ...(ammo_type ? { ammoType: ammo_type } : {}),
+    ...(weapon_range ? { range: weapon_range } : {}),
+  };
+}
+
 /** DB rows win on conflicting fields, but never drop a playable local challenge. */
 function mergeCatalog(catalog, dbRows) {
   const byId = new Map(catalog.map((w) => [w.id, { ...w }]));
   const byName = new Map(catalog.map((w) => [w.name, w.id]));
 
-  for (const row of dbRows) {
-    if (!row) continue;
+  for (const raw of dbRows) {
+    if (!raw) continue;
+    const row = normalise(raw);
     const key = byId.has(row.id) ? row.id : byName.get(row.name);
 
     if (key) {
